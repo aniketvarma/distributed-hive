@@ -1,6 +1,7 @@
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::io::{Write, Read};
-use shared::Message; // <--- Look! We are using our own library!
+use shared::Message; 
+use std::thread;
 
 fn main() {
     // 1. Bind to the port (Start the Server)
@@ -13,35 +14,40 @@ fn main() {
             Ok(mut socket) => {
                 println!("🐝 A Drone just connected!");
 
-                // 3. Create the Message object
-                let msg = Message::Task("resize_image_123.jpg".to_string());
-
-                // 4. SERIALIZE: Turn the fancy Rust Enum into a text string (JSON)
-                // This is where Serde does the magic work.
-                let json_message = serde_json::to_string(&msg).unwrap();
-
-                // 5. Write the JSON string to the TCP stream (Send it)
-                socket.write_all(json_message.as_bytes()).unwrap();
-
-                print!("👑 Sent task to Drone, waiting for response...\n");
-
-                let mut buffer = [0u8; 512];
-
-                match socket.read(&mut buffer) {
-
-                 Ok(bytes_read) => {
-
-                    let received_data = &buffer[..bytes_read];
-                    let reply_msg: Message = serde_json::from_slice(received_data).unwrap();
-                    println!("🎉 Queen received report: {:?}", reply_msg);
-                 }
-
-                    Err(e) => {
-                        println!("Failed to read from socket: {}", e);
-                    }
-                }
+              thread::spawn(move || {handle_client(socket);});
+                
             }
             Err(e) => println!("Connection failed: {}", e),
         }
     }
+}
+
+
+fn handle_client(mut socket: TcpStream){
+
+    let msg = Message::Task("image1.png".to_string());
+    let json_msg = serde_json::to_string(&msg).unwrap();
+    socket.write_all(json_msg.as_bytes()).unwrap();
+    print!("Task sent to background thread\n");
+
+
+    let mut  buffer = [0; 512];
+
+    match socket.read(&mut buffer){
+       Ok(bytes_read) => {
+        if bytes_read == 0 {return;}
+        let received_data = &buffer[..bytes_read];
+        
+        if let Ok(reply_msg) = serde_json::from_slice::<Message>(received_data){
+            println!("Received reply from drone: {:?}", reply_msg);
+        } else {
+            println!("Failed to parse message from drone");
+        }
+
+       }
+
+         Err(e) => {
+          println!("Failed to read from socket: {}", e);
+         }
+    } 
 }
