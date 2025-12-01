@@ -37,4 +37,4 @@ Notes
 - Ensure `edition = "2021"` and required dependencies are set in each crate's Cargo.toml.
 
 License
-Add your license of choice here.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
