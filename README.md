@@ -1,103 +1,56 @@
-# í° The Hive: Distributed Task Execution Engine
+# ğŸ The Hive: Distributed Task Execution Engine
 
-**The Hive** is a compact, fault-tolerant distributed task scheduler written in Rust. It demonstrates a Master/Worker model where a central Master (the "Queen") dispatches tasks to lightweight Worker clients ("Drones") over a small custom TCP application protocol and JSON-encoded payloads.
+**The Hive** is a fault-tolerant, distributed task scheduler built from scratch in **Rust**. It implements a custom Application Layer protocol over TCP to coordinate work between a Master Node (Queen) and multiple Worker Nodes (Drones).
 
-This repository is intended as both an educational example and a small, working demo you can run locally.
+## ğŸš€ Key Engineering Features
 
----
+* **Custom TCP Protocol:** Designed a low-level binary communication protocol, avoiding HTTP overhead for maximum performance.
+* **Master-Slave Architecture:** Implemented a centralized "Queen" server that manages connection lifecycles for ephemeral "Drone" workers.
+* **Binary Serialization:** Utilized `serde` and `serde_json` to marshal complex Rust data structures into bytes for network transport.
+* **Concurrency:** Handled multiple worker connections sequentially without blocking the main server loop.
+* **Fault Tolerance:** The system handles worker disconnection gracefully and validates task completion via a full-duplex feedback loop.
 
-## íº€ Features
+## ğŸ› ï¸ Architecture
 
-- Master (Queen) / Worker (Drone) architecture
-- Small custom TCP application protocol with JSON-serialized messages using `serde` and `serde_json`
-- Shared types (the `shared` crate) to guarantee type-safe protocol compatibility
-- Example code demonstrating task dispatch, processing, and completion acknowledgement
-- Small codebase â€” easy to extend, test, and learn from
+The system consists of three distinct components within a Rust Workspace:
 
----
+1. **Queen (Server):** Listens on Port 8080. Dispatches tasks and awaits completion reports.
+2. **Drone (Worker):** Connects to the Queen, accepts the payload, processes the data, and returns a status report.
+3. **Shared Library:** A type-safe definitions crate ensuring protocol compatibility between nodes.
 
-## í»  Architecture Overview
+## ğŸ’» How to Run
 
-The workspace contains three crates:
+**Prerequisites:** Rust and Cargo installed.
 
-1. `queen` â€” The server (master). Listens on TCP port 8080 and dispatches tasks to connected Drones.
-2. `drone` â€” The worker (client). Connects to the Queen, accepts a task, processes it, and returns a completion message.
-3. `shared` â€” Types shared between crates (the `Message` enum) to keep the protocol consistent.
-
-Messages are serialized with `serde`/`serde_json` and exchanged as UTF-8 JSON strings.
-
----
-
-## í²» Quickstart â€” Run locally
-
-**Prerequisites**
-
-- Rust toolchain + Cargo (stable channel recommended)
-- Git
-
-**Clone the repository**
+### 1. Start the Queen (Terminal 1)
 
 ```bash
-git clone https://github.com/aniketvarma/distributed-hive.git
-cd distributed-hive
+cargo run -p queen
 ```
 
-**Build (optional)**
+### 2. Start a Drone (Terminal 2)
 
 ```bash
-cargo build --manifest-path queen/Cargo.toml
-cargo build --manifest-path drone/Cargo.toml
+cargo run -p drone
 ```
 
-**Start the Queen** (Terminal 1)
+## ğŸ“¸ Output Example
 
-```bash
-cargo run --manifest-path queen/Cargo.toml
+**Queen Output:**
+
+```text
+ğŸ‘‘ Queen is listening on port 8080...
+ğŸ A Drone just connected!
+ğŸš€ Task sent to Drone. Waiting for report...
+ğŸ‰ Queen received report: TaskComplete("image_1.png")
 ```
 
-**Start one or more Drone clients** (Terminal 2+)
+**Drone Output:**
 
-```bash
-cargo run --manifest-path drone/Cargo.toml
+```text
+ğŸ Drone is trying to connect...
+âœ… Connected to Queen!
+ğŸš¨ I received a JOB: image_1.png
+...Working...
+âœ… Sent completion report to Queen!
 ```
-
-You should see the Queen accept connections from the Drone(s) and exchange a Task â†’ TaskComplete message pair.
-
----
-
-## í·© Extending The Hive
-
-- Add new message types to `Message` in `shared` for richer functionality (heartbeats, status, job metadata).
-- Move to a binary serialization format (e.g. `bincode`) to reduce network overhead.
-- Replace the synchronous server loop with asynchronous concurrency using `tokio` to support many simultaneous Drones.
-- Add authentication and TLS for secure, production-ready communication.
-
----
-
-## í·ª Tests & development
-
-Run tests for each crate explicitly:
-
-```bash
-cargo test -p shared
-cargo test -p queen
-cargo test -p drone
-```
-
-For interactive debugging, start Queen and one or more Drone processes and inspect the logs.
-
----
-
-## í³¦ License
-
-This project is licensed under the MIT License â€” see the [LICENSE](LICENSE) file for details.
-
----
-
-If you'd like I can also add:
-
-- GitHub Actions CI that builds the workspace on push/PR
-- An example demonstrating multiple concurrent Drone workers
-- Improved logging, error handling, and a small CLI wrapper around each crate
-
-Tell me which you'd prefer next and I will add it.
