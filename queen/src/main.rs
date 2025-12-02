@@ -11,7 +11,7 @@ fn main() {
     // 2. Loop forever, waiting for Drones
     for stream in listener.incoming() {
         match stream {
-            Ok(mut socket) => {
+            Ok( socket) => {
                 println!("🐝 A Drone just connected!");
 
               thread::spawn(move || {handle_client(socket);});
@@ -25,7 +25,7 @@ fn main() {
 
 fn handle_client(mut socket: TcpStream){
 
-    let msg = Message::Task("image1.png".to_string());
+    let msg = Message::Task("Aniket".to_string());
     let json_msg = serde_json::to_string(&msg).unwrap();
     socket.write_all(json_msg.as_bytes()).unwrap();
     print!("Task sent to background thread\n");
@@ -39,7 +39,7 @@ fn handle_client(mut socket: TcpStream){
         let received_data = &buffer[..bytes_read];
         
         if let Ok(reply_msg) = serde_json::from_slice::<Message>(received_data){
-            println!("Received reply from drone: {:?}", reply_msg);
+            println!("Received hash from drone: {:?}", reply_msg);
         } else {
             println!("Failed to parse message from drone");
         }

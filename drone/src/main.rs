@@ -2,6 +2,7 @@ use shared::Message;
 use std::io::Read;
 use std::io::Write;
 use std::net::TcpStream;
+use sha2::{Sha256, Digest};
 
 fn main() {
     println!("🐝 Drone is trying to connect...");
@@ -37,15 +38,21 @@ fn handle_server(mut socket: TcpStream) {
                 Ok(msg) => match msg {
                     Message::HelloDrone => println!("👑 Queen says Hello!"),
                     Message::Task(task_name) => {
-                        println!("🚨 I received a JOB: {}", task_name);
+                        println!("🚨 received the work: Hash the world {}" , task_name);
                         println!("...Working...");
+                        //hashing the task_name
+                        let mut hasher = Sha256::new();
+                        hasher.update(task_name.as_bytes());
+                        let result = hasher.finalize();
+                        let result = format!("{:x}", result);
+                        println!("...Done! Task result hash: {}", result);
 
-                        let reply = Message::TaskComplete(task_name);
+                        let reply = Message::TaskComplete(result);
                         let json_reply = serde_json::to_string(&reply).unwrap();
                         if let Err(e) = socket.write_all(json_reply.as_bytes()) {
                             eprintln!("Failed to write reply: {}", e);
                         } else {
-                            println!("✅ Sent completion report to Queen!");
+                            println!("✅ Sent Hash to Queen!");
                         }
                     }
                     _ => println!("Unknown message received"),
