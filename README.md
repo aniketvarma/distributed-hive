@@ -1,52 +1,71 @@
 # 🐝 The Hive: Distributed Task Execution Engine
 
-The Hive is a fault-tolerant, distributed task scheduler built from scratch in Rust. It implements a custom Application Layer protocol over TCP to coordinate work between a Master Node (Queen) and multiple Worker Nodes (Drones).
+The Hive is a fault-tolerant, distributed task scheduler built from scratch in Rust. It implements a hybrid architecture combining a low-level TCP protocol for worker coordination and a high-level REST API for data observability.
 
 ## 🚀 Key Engineering Features
 
-- **Distributed Computing:** Nodes perform CPU-intensive cryptographic work (SHA-256 hashing) distributed across the network.  
-- **Custom TCP Protocol:** Designed a low-level binary communication protocol, avoiding HTTP overhead for maximum performance.  
-- **Master-Slave Architecture:** Implemented a centralized "Queen" server that manages connection lifecycles for ephemeral "Drone" workers.  
-- **Binary Serialization:** Utilized `serde` and `serde_json` to marshal complex Rust data structures into bytes for network transport.  
-- **Concurrency:** Handled multiple worker connections sequentially using multi-threading without blocking the main server loop.
+- **Hybrid Server Architecture:** Runs two concurrent services (TCP + HTTP) within a single Async Runtime (Tokio).
+- **Distributed Computing:** Nodes perform CPU-intensive cryptographic work (SHA-256 hashing) distributed across the network.
+- **Persistence:** All results are asynchronously logged to a SQLite database using connection pooling.
+- **REST API:** Exposes a public JSON dashboard using Axum to monitor task status in real-time.
+- **Custom TCP Protocol:** Designed a binary communication protocol with `serde` serialization for maximum worker performance.
 
 ## 🛠️ Architecture
 
-The system consists of three distinct components within a Rust Workspace:
+The system consists of three distinct components within a Rust workspace:
 
-1. **Queen (Server):** Listens on port 8080. Dispatches computational tasks (strings to hash) and awaits results.  
-2. **Drone (Worker):** Connects to the Queen, accepts the payload, calculates the SHA-256 hash, and returns the result.  
-3. **Shared Library:** A type-safe definitions crate ensuring protocol compatibility between nodes.
+- **Queen (Master Node):**
+  - Port 8080 (TCP): Manages ephemeral "Drone" workers.
+  - Port 3000 (HTTP): Serves the JSON API.
+  - Database: Manages the SQLite connection pool.
+
+- **Drone (Worker Node):** Connects to the Queen, accepts payloads, calculates SHA-256 hashes, and returns results.
+
+- **Shared Library:** A type-safe definitions crate ensuring protocol compatibility.
 
 ## 💻 How to Run
 
 **Prerequisites:** Rust and Cargo installed.
 
 1. Start the Queen (Terminal 1)
-```bash
-cargo run -p queen
-```
+
+   This initializes the database and starts both the TCP and HTTP servers:
+
+   ```bash
+   cargo run -p queen
+   ```
 
 2. Start a Drone (Terminal 2)
-```bash
-cargo run -p drone
-```
+
+   ```bash
+   cargo run -p drone
+   ```
+
+3. Check the Dashboard (Browser)
+
+   Open your browser to see the real-time list of completed tasks (JSON):
+
+   http://localhost:3000/tasks
 
 ## 📸 Output Example
 
-Queen Output:
+**Queen Output:**
+
 ```
-👑 Queen is listening on port 8080 (Swarm Mode)...
-🐝 A Drone connected!
-🚀 Task sent to background thread.
-🎉 Received reply from drone: TaskComplete("7c0b5f54...")
+💾 Database initialized.
+🌍 HTTP API running at http://localhost:3000/tasks
+👑 TCP Service active on port 8080...
+🎉 Worker finished task: 7c0b5f54...
 ```
 
-Drone Output:
-```
-🐝 Drone is trying to connect...
-✅ Connected to Queen!
-🚨 Received Work: Hash the word 'super_secret_password_123'
-...Crunching numbers...
-✅ Work Done! Hash: 7c0b5f54...
+**Browser Output (JSON):**
+
+```json
+[
+  {
+    "id": 1,
+    "task_name": "super_secret_password_123",
+    "result_hash": "28052f444cf50f176029269c3f0e3e128edfffa52df2d0c619e3a2b4b1b0a250"
+  }
+]
 ```
